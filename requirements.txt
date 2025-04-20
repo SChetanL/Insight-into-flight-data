@@ -1,0 +1,8 @@
+openai
+python-dotenv
+pandas
+tabulate
+cartopy
+seaborn
+scikit-learn
+plotlymv requirment.txt requirements.txt
