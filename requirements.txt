@@ -5,4 +5,4 @@ tabulate
 cartopy
 seaborn
 scikit-learn
-plotlymv requirment.txt requirements.txt
+plotly
