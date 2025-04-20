@@ -14,6 +14,8 @@ import os
 import io
 import streamlit as st
 import base64
+import requests
+
 
 
 load_dotenv()
@@ -71,6 +73,10 @@ def preprocess(df):
 
 @st.cache_data
 def load_data():
+    url = "https://www.dropbox.com/scl/fi/4o0y23cokyxuatgodan49/flights.csv?rlkey=27gqbgg6o7j63l47ai5kxe9jx&st=986ldess&dl=1"
+    response = requests.get(url, verify=False)  # Disable SSL verification
+    response.raise_for_status()  # Raise an error for bad status codes
+    flights = pd.read_csv(io.StringIO(response.text))
     airlines = pd.read_csv("airlines.csv")
     airlines = airlines.rename(columns={'AIRLINE': 'AL_FULLNAME', 'IATA_CODE': 'AIRLINE'})
     airports = pd.read_csv("airports.csv")
