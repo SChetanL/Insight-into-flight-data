@@ -1,8 +1,4 @@
-!pip install openai
-!pip install python-dotenv
-!pip install pandas
-!pip install tabulate
-!pip install cartopy
+
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
