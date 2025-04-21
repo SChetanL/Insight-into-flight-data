@@ -1,4 +1,3 @@
-
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -16,8 +15,19 @@ import io
 import streamlit as st
 import base64
 import requests
-
-
+import io
+import matplotlib as mpl
+from matplotlib.gridspec import GridSpec 
+import matplotlib.patches as mpatches 
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import curve_fit
+import streamlit as st
+import matplotlib.pyplot as plt
+import pandas as pd
+from collections import OrderedDict
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 
 load_dotenv()
 client = openai.OpenAI(
@@ -74,14 +84,19 @@ def preprocess(df):
 
 @st.cache_data
 def load_data():
+
+
     url = "https://www.dropbox.com/scl/fi/4o0y23cokyxuatgodan49/flights.csv?rlkey=27gqbgg6o7j63l47ai5kxe9jx&st=986ldess&dl=1"
     response = requests.get(url, verify=False)  # Disable SSL verification
     response.raise_for_status()  # Raise an error for bad status codes
     flights = pd.read_csv(io.StringIO(response.text))
+    
+   
     airlines = pd.read_csv("airlines.csv")
     airlines = airlines.rename(columns={'AIRLINE': 'AL_FULLNAME', 'IATA_CODE': 'AIRLINE'})
     airports = pd.read_csv("airports.csv")
-    flights = pd.read_csv("flights.csv")
+    #flights = pd.read_csv(url)
+
     flights.columns = flights.columns.str.lower()
     airlines.columns = airlines.columns.str.lower()
     airports.columns = airports.columns.str.lower()
@@ -271,6 +286,152 @@ with tab1:
     # ✅ Display in Streamlit
     st.subheader("✈️ Flight Delay Level Breakdown by Airline")
     st.pyplot(fig)
+
+    def get_stats(group):
+        return {'min': group.min(), 'max': group.max(),
+                'count': group.count(), 'mean': group.mean()}
+    #_______________________________________________________________
+    # Creation of a dataframe with statitical infos on each airline:
+    global_stats = df['departure_delay'].groupby(df['airline']).apply(get_stats).unstack()
+    global_stats = global_stats.sort_values('count')
+    
+    # Styling font
+    font = {'family': 'sans-serif', 'weight': 'bold', 'size': 15}
+    mpl.rc('font', **font)
+
+    # Data prep
+    df2 = df.loc[:, ['airline', 'departure_delay']].copy()
+    df2['airline'] = df2['airline'].replace(abbr_companies)
+
+    colors = ['royalblue', 'grey', 'wheat', 'c', 'firebrick', 'seagreen', 'lightskyblue',
+            'lightcoral', 'yellowgreen', 'gold', 'tomato', 'violet', 'aquamarine', 'chartreuse']
+
+    # Set up figure
+    fig = plt.figure(figsize=(16, 15))
+    gs = GridSpec(2, 2)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax3 = fig.add_subplot(gs[1, :])
+
+    # --- Pie chart 1: % of flights per company ---
+    labels = [s for s in global_stats.index]
+    sizes = global_stats['count'].values
+    explode = [0.3 if sizes[i] < 20000 else 0.0 for i in range(len(abbr_companies))]
+
+    patches, texts, autotexts = ax1.pie(sizes, explode=explode,
+        labels=labels, colors=colors, autopct='%1.0f%%',
+        shadow=False, startangle=0)
+
+    for t in texts:
+        t.set_fontsize(14)
+    ax1.axis('equal')
+    ax1.set_title('% of flights per company',
+                bbox={'facecolor': 'midnightblue', 'pad': 5}, color='w', fontsize=18)
+
+    # Custom legend
+    comp_handler = [
+        mpatches.Patch(color=colors[i],
+                    label=f"{global_stats.index[i]}: {abbr_companies[global_stats.index[i]]}")
+        for i in range(len(abbr_companies))
+    ]
+    ax1.legend(handles=comp_handler, bbox_to_anchor=(0.2, 0.9),
+            fontsize=13, bbox_transform=fig.transFigure)
+
+    # --- Pie chart 2: Mean delay at origin ---
+    sizes = global_stats['mean'].apply(lambda x: max(x, 0)).values
+    explode = [0.0 if sizes[i] < 20000 else 0.01 for i in range(len(abbr_companies))]
+    patches, texts, autotexts = ax2.pie(sizes, explode=explode, labels=labels,
+        colors=colors, shadow=False, startangle=0,
+        autopct=lambda p: '{:.0f}'.format(p * sum(sizes) / 100))
+
+    for t in texts:
+        t.set_fontsize(14)
+    ax2.axis('equal')
+    ax2.set_title('Mean delay at origin',
+                bbox={'facecolor': 'midnightblue', 'pad': 5}, color='w', fontsize=18)
+
+    # --- Strip plot: Departure delays ---
+    strip_colors = ['firebrick', 'gold', 'lightcoral', 'aquamarine', 'c', 'yellowgreen', 'grey',
+                    'seagreen', 'tomato', 'violet', 'wheat', 'chartreuse', 'lightskyblue', 'royalblue']
+
+    sns.stripplot(y="airline", x="departure_delay", size=4, palette=strip_colors,
+                data=df2, linewidth=0.5, jitter=True, ax=ax3)
+
+    plt.setp(ax3.get_xticklabels(), fontsize=14)
+    plt.setp(ax3.get_yticklabels(), fontsize=14)
+    ax3.set_xticklabels(['{:2.0f}h{:2.0f}m'.format(*divmod(x, 60))
+                        for x in ax3.get_xticks()])
+
+    ax3.yaxis.label.set_visible(False)
+    plt.xlabel('Departure delay',
+            fontsize=18, bbox={'facecolor': 'midnightblue', 'pad': 5},
+            color='w', labelpad=20)
+
+    plt.tight_layout(w_pad=3)
+
+    # --- Streamlit Display ---
+    st.subheader("✈️ Airline Delay Analysis")
+    st.pyplot(fig)
+
+    def func(x, a, b):
+        return a * np.exp(-x / b)
+
+    # Airline full names
+    airline_names = [abbr_companies[x] for x in global_stats.index]
+
+    # DataFrame df2 must have full airline names mapped
+    df2['airline'] = df2['airline'].replace(abbr_companies)
+
+    # Begin plotting
+    points = []
+    label_company = []
+    fig = plt.figure(figsize=(11, 11))
+
+    for i, carrier_name in enumerate(airline_names, start=1):
+        ax = fig.add_subplot(5, 3, i)
+
+        # Histogram and fit
+        data = df2[df2['airline'] == carrier_name]['departure_delay']
+        n, bins, patches = ax.hist(data, range=(15, 180), density=True, bins=60, color='skyblue', alpha=0.7)
+
+        bin_centers = bins[:-1] + 0.5 * (bins[1:] - bins[:-1])
+        popt, pcov = curve_fit(func, bin_centers, n, p0=[1, 2])
+
+        points.append(popt)
+        label_company.append(carrier_name)
+
+        # Plot the fitted curve
+        ax.plot(bin_centers, func(bin_centers, *popt), 'r-', linewidth=2)
+
+        # Tick labels formatting
+        if i < 10:
+            ax.set_xticklabels([])
+        else:
+            ax.set_xticklabels(['{:2.0f}h{:2.0f}m'.format(*divmod(x, 60)) for x in ax.get_xticks()])
+
+        # Title
+        ax.set_title(carrier_name, fontsize=14, fontweight='bold', color='darkblue')
+
+        # Labels
+        if i == 4:
+            ax.text(-0.3, 0.9, 'Normalized count of flights', fontsize=16, rotation=90,
+                    color='k', horizontalalignment='center', transform=ax.transAxes)
+        if i == 14:
+            ax.text(0.5, -0.5, 'Delay at origin', fontsize=16, rotation=0,
+                    color='k', horizontalalignment='center', transform=ax.transAxes)
+
+        # Parameters a and b on plot
+        ax.text(0.68, 0.7, f'a = {round(popt[0], 2)}\nb = {round(popt[1], 1)}',
+                style='italic', transform=ax.transAxes, fontsize=12, family='fantasy',
+                bbox={'facecolor': 'tomato', 'alpha': 0.8, 'pad': 5})
+
+    plt.tight_layout()
+
+    # 🎯 Streamlit Display
+    st.subheader("📈 Histogram Fit: Departure Delays per Airline")
+    st.pyplot(fig)
+    
+
     
     
 
