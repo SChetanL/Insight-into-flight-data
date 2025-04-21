@@ -9,11 +9,14 @@ To run this app on your local machine:
 
 
 # Clone the repository
-git clone https://github.com/your-username/your-repo-name.git](https://github.com/SChetanL/Insight-into-flight-data.git
+git clone https://github.com/SChetanL/Insight-into-flight-data.git
+
 cd your-repo-name
 
 # (Optional) Create a virtual environment
+
 python -m venv venv
+
 source venv/bin/activate  # or .\venv\Scripts\activate on Windows
 
 # Install dependencies
