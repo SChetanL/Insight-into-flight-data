@@ -24,3 +24,7 @@ streamlit run app.py
 
 #Visit http://localhost:8501 in your web browser to use the app.
 
+
+
+# Deployment Link
+https://5122project.streamlit.app/
