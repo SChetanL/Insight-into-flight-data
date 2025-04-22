@@ -121,7 +121,7 @@ st.title('INSIGHTS: Airline Data Analysis')
 tab1, tab2, tab3 = st.tabs(["Data plotting", "Data", "Insights Generation"])
 df = load_data()
 with tab1:
-    img_base64 = get_base64_of_image("/Users/saichetan/5122Project/background.png")
+    img_base64 = get_base64_of_image("background.png")
 
     st.markdown(
         f"""
@@ -404,28 +404,24 @@ with tab1:
         ax.plot(bin_centers, func(bin_centers, *popt), 'r-', linewidth=2)
 
         # Tick labels formatting
-        if i < 10:
-            ax.set_xticklabels([])
-        else:
-            ax.set_xticklabels(['{:2.0f}h{:2.0f}m'.format(*divmod(x, 60)) for x in ax.get_xticks()])
+        ax.set_xticklabels(['{:2.0f}h{:2.0f}m'.format(*divmod(x, 60)) for x in ax.get_xticks()])
 
         # Title
         ax.set_title(carrier_name, fontsize=14, fontweight='bold', color='darkblue')
+        ax.tick_params(axis='x', labelsize=8)
+        ax.tick_params(axis='y', labelsize=8) 
 
-        # Labels
-        if i == 4:
-            ax.text(-0.3, 0.9, 'Normalized count of flights', fontsize=16, rotation=90,
-                    color='k', horizontalalignment='center', transform=ax.transAxes)
-        if i == 14:
-            ax.text(0.5, -0.5, 'Delay at origin', fontsize=16, rotation=0,
-                    color='k', horizontalalignment='center', transform=ax.transAxes)
+        fig.supxlabel("Delay at origin (minutes)", fontsize=16, y=0.02)
+        fig.supylabel("Normalized count of flights", fontsize=16, x=0.04)
+
 
         # Parameters a and b on plot
         ax.text(0.68, 0.7, f'a = {round(popt[0], 2)}\nb = {round(popt[1], 1)}',
                 style='italic', transform=ax.transAxes, fontsize=12, family='fantasy',
                 bbox={'facecolor': 'tomato', 'alpha': 0.8, 'pad': 5})
 
-    plt.tight_layout()
+    fig.subplots_adjust(top=0.94, bottom=0.08, hspace=1.2, wspace=0.4)
+
 
     # 🎯 Streamlit Display
     st.subheader("📈 Histogram Fit: Departure Delays per Airline")
@@ -445,8 +441,9 @@ with tab2:
     
 
 with tab3:
-    # Unified dropdown for insight generation
+    
     st.markdown("---")
+
     st.subheader("📊 Generate Insight for Selected Visualization")
     visualization_option = st.selectbox(
         "Choose a visualization to analyze:",
